@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import pickle
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
-st.title("Prediksi Dropout / Academic Success")
+st.title("Aplikasi Prediksi Dropout / Academic Success Menggunakan KNN")
 
 @st.cache_data
 def load_data():
@@ -16,10 +16,11 @@ df = load_data()
 st.subheader("Preview Dataset")
 st.write(df.head())
 
-# ==========================================
-# AUTOMATIC TARGET DETECTION
-# ==========================================
-possible_targets = ["Target", "target", "status", "Status", "Dropout", "Graduate"]
+
+possible_targets = [
+    "Target", "target", "Status", "status",
+    "Dropout", "dropout", "Graduate", "graduate", "Outcome"
+]
 
 detected_target = None
 for col in df.columns:
@@ -33,35 +34,36 @@ if detected_target is None:
 
 st.success(f"Kolom target terdeteksi: {detected_target}")
 
-# ==========================================
-# PREPROCESSING
-# ==========================================
+
 X = df.drop(columns=[detected_target])
 y = df[detected_target]
 
-# Pastikan hanya kolom numerik
+
 X = X.select_dtypes(include=["int64", "float64"])
+
 
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
+
 
 X_train, X_test, y_train, y_test = train_test_split(
     X_scaled, y, test_size=0.2, random_state=42
 )
 
-# ==========================================
-# MODEL
-# ==========================================
-model = RandomForestClassifier(n_estimators=200, random_state=42)
-model.fit(X_train, y_train)
 
-with open("model.pkl", "wb") as f:
-    pickle.dump((model, scaler, list(X.columns)), f)
+knn = KNeighborsClassifier(
+    n_neighbors=5,
+    weights='distance',
+    metric='minkowski'
+)
 
-# ==========================================
-# STREAMLIT INPUT FORM
-# ==========================================
-st.subheader("Input Fitur")
+knn.fit(X_train, y_train)
+
+
+with open("model_knn.pkl", "wb") as f:
+    pickle.dump((knn, scaler, list(X.columns)), f)
+
+st.subheader("Input Fitur untuk Prediksi")
 
 user_input = {}
 for col in X.columns:
@@ -69,14 +71,13 @@ for col in X.columns:
 
 input_df = pd.DataFrame([user_input])
 
-# ==========================================
-# PREDIKSI
-# ==========================================
+
 if st.button("Prediksi"):
-    with open("model.pkl", "rb") as f:
-        model, scaler, cols = pickle.load(f)
+    with open("model_knn.pkl", "rb") as f:
+        knn_model, knn_scaler, cols = pickle.load(f)
 
-    input_scaled = scaler.transform(input_df[cols])
-    pred = model.predict(input_scaled)[0]
+    input_scaled = knn_scaler.transform(input_df[cols])
+    pred = knn_model.predict(input_scaled)[0]
 
-    st.success(f"Prediksi Model: {pred}")
+    st.subheader("Hasil Prediksi")
+    st.success(f"Hasil Model KNN: {pred}")
