@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 
 st.title("Prediksi Risiko Dropout Mahasiswa (KNN)")
 
-uploaded = st.file_uploader(""D:\SEMESTER 3 LAPTOP\(IS388-AL) Data Analysis - LAB\W - Copy (13)\Unguided\archive\students_dropout_academic_success.csv"", type=["csv"])
+uploaded = st.file_uploader("D:\SEMESTER 3 LAPTOP\(IS388-AL) Data Analysis - LAB\W - Copy (13)\Unguided\archive\students_dropout_academic_success.csv", type=["csv"])
 
 TARGET_COL = "Target"
 
