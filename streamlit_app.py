@@ -16,9 +16,6 @@ from sklearn.metrics import (
     f1_score, confusion_matrix, classification_report
 )
 
-# -------------------------------------------------------------------
-# CONFIG
-# -------------------------------------------------------------------
 st.set_page_config(page_title="Prediksi Risiko Dropout (KNN)", layout="wide")
 st.title("Prediksi Risiko Dropout Mahasiswa (KNN)")
 
@@ -28,9 +25,6 @@ if uploaded is None:
     st.info("Silakan upload file CSV yang mengandung kolom 'target' untuk memulai.")
     st.stop()
 
-# -------------------------------------------------------------------
-# LOAD DATA
-# -------------------------------------------------------------------
 df_raw = pd.read_csv(uploaded)
 st.subheader("Preview dataset")
 st.dataframe(df_raw.head())
@@ -41,9 +35,6 @@ if "target" not in df_raw.columns:
 
 st.success("Kolom 'target' ditemukan.")
 
-# -------------------------------------------------------------------
-# PENGATURAN MODE KLASIFIKASI
-# -------------------------------------------------------------------
 st.sidebar.header("Pengaturan Model")
 mode = st.sidebar.radio(
     "Mode Klasifikasi:",
@@ -52,48 +43,32 @@ mode = st.sidebar.radio(
 
 df = df_raw.copy()
 
-# Jika kolom target berupa teks, simpan dulu untuk keperluan mapping
 target_raw = df["target"].copy()
 
-# Mode binary: 0 -> 1 (dropout), 1/2 -> 0 (tidak dropout)
 if mode == "Binary (Dropout vs Tidak Dropout)":
-    # Asumsi: 0=Dropout, 1/2=Enrolled/Graduate
     df["target"] = df["target"].apply(lambda x: 1 if x == 0 else 0)
 
-# -------------------------------------------------------------------
-# ENCODING LABEL y -> ANGKA
-# -------------------------------------------------------------------
-# y_raw: label asli (bisa numerik atau string)
 y_raw = df["target"]
 
-if y_raw.dtype == "O":  # object/string -> encode manual
+if y_raw.dtype == "O":
     unique_labels = sorted(y_raw.unique())
     label2id = {lab: idx for idx, lab in enumerate(unique_labels)}
     id2label = {idx: lab for lab, idx in label2id.items()}
     y = y_raw.map(label2id)
 else:
     y = y_raw.copy()
-    id2label = None  # tidak perlu mapping balik
+    id2label = None
 
 X = df.drop(columns=["target"])
 
-# -------------------------------------------------------------------
-# TIPE FITUR
-# -------------------------------------------------------------------
 numeric_cols = X.select_dtypes(include=["number"]).columns.tolist()
 cat_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
-# -------------------------------------------------------------------
-# HYPERPARAMETER KNN
-# -------------------------------------------------------------------
 st.sidebar.subheader("Hyperparameter KNN")
 k_val = st.sidebar.slider("n_neighbors (k)", 1, 21, 5)
 weight_val = st.sidebar.selectbox("weights", ["uniform", "distance"])
 p_val = st.sidebar.selectbox("Metric P", [1, 2])
 
-# -------------------------------------------------------------------
-# PIPELINE PREPROCESSING + MODEL
-# -------------------------------------------------------------------
 numeric_transformer = Pipeline(steps=[
     ("imputer", SimpleImputer(strategy="median")),
     ("scaler", StandardScaler())
@@ -120,9 +95,6 @@ model = Pipeline(steps=[
     ))
 ])
 
-# -------------------------------------------------------------------
-# TRAIN / TEST SPLIT & TRAINING
-# -------------------------------------------------------------------
 strat = y if y.value_counts().min() >= 2 else None
 X_train, X_test, y_train, y_test = train_test_split(
     X, y,
@@ -134,7 +106,6 @@ X_train, X_test, y_train, y_test = train_test_split(
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
-# Kalau ada mapping id2label, konversi ke label teks untuk ditampilkan
 if id2label is not None:
     y_test_disp = y_test.map(id2label)
     y_pred_disp = pd.Series(y_pred).map(id2label)
@@ -148,12 +119,8 @@ rec = recall_score(y_test, y_pred, average="weighted", zero_division=0)
 f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
 cm = confusion_matrix(y_test, y_pred)
 
-# -------------------------------------------------------------------
-# TABS: EDA, Evaluasi, Prediksi
-# -------------------------------------------------------------------
-tab1, tab2, tab3 = st.tabs(["📊 EDA", "🧠 Evaluasi Model", "🎯 Prediksi Manual"])
+tab1, tab2, tab3 = st.tabs(["EDA", "Evaluasi Model", "Prediksi Manual"])
 
-# ================= TAB 1: EDA =================
 with tab1:
     st.subheader("Exploratory Data Analysis (EDA)")
     c1, c2 = st.columns(2)
@@ -165,7 +132,6 @@ with tab1:
         st.write("Distribusi target (label asli):")
         st.bar_chart(target_raw.value_counts())
 
-# ================= TAB 2: Evaluasi Model =================
 with tab2:
     st.subheader("Evaluasi Model (Test Set)")
 
@@ -190,7 +156,6 @@ with tab2:
     st.write("Classification report (berdasarkan label numerik):")
     st.text(classification_report(y_test, y_pred, zero_division=0))
 
-# ================= TAB 3: Prediksi Manual =================
 with tab3:
     st.subheader("Prediksi Mahasiswa Baru (Input Manual)")
 
@@ -209,12 +174,9 @@ with tab3:
             input_data[col] = st.text_input(col, value="MISSING")
 
         if st.button("Prediksi"):
-            # Bangun df_new dengan kolom yang sama dan urutan sama seperti X
-            df_new = pd.DataFrame([input_data])
-            df_new = df_new[X.columns]  # pastikan urutan kolom sama
 
-            # Biarkan pipeline menangani imputer/encoder; kita hanya menjaga tipe dasar
-            # numerik sudah number_input -> float; kategori sudah string
+            df_new = pd.DataFrame([input_data])
+            df_new = df_new[X.columns]
 
             st.write("Preview input:")
             st.dataframe(df_new)
