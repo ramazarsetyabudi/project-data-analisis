@@ -25,7 +25,7 @@ if uploaded is not None:
     st.dataframe(df.head())
 
     if "target" not in df.columns:
-        st.error("Kolom target 'target' TIDAK ditemukan. Pastikan dataset memiliki kolom ini.")
+        st.error("Kolom target 'target' tidak ditemukan dalam dataset.")
         st.stop()
 
     st.success("Kolom target ditemukan: 'target'")
@@ -39,7 +39,6 @@ if uploaded is not None:
     df_proc = df.copy()
 
     if mode == "Binary (Dropout vs Tidak Dropout)":
-        st.info("Binary mode: 0 = Dropout, 1/2 = Tidak Dropout")
         df_proc["target"] = df_proc["target"].apply(lambda x: 1 if x != 0 else 0)
 
     X = df_proc.drop(columns=["target"])
@@ -56,7 +55,7 @@ if uploaded is not None:
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", StandardScaler(), numeric_cols),
-            ("cat", OneHotEncoder(handle_unknown="ignore", sparse=False), cat_cols)
+            ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), cat_cols)
         ]
     )
 
@@ -68,11 +67,7 @@ if uploaded is not None:
     model = Pipeline(
         steps=[
             ("prep", preprocessor),
-            ("knn", KNeighborsClassifier(
-                n_neighbors=k_val,
-                weights=weight_val,
-                p=p_val
-            ))
+            ("knn", KNeighborsClassifier(n_neighbors=k_val, weights=weight_val, p=p_val))
         ]
     )
 
@@ -84,7 +79,7 @@ if uploaded is not None:
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
 
-    st.subheader("Evaluasi Model (Test Set)")
+    st.subheader("Evaluasi Model")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Akurasi", f"{accuracy_score(y_test, preds):.4f}")
     col2.metric("Precision", f"{precision_score(y_test, preds, average='weighted'):.4f}")
@@ -92,26 +87,22 @@ if uploaded is not None:
     col4.metric("F1-Score", f"{f1_score(y_test, preds, average='weighted'):.4f}")
 
     st.subheader("Confusion Matrix")
-
     cm = confusion_matrix(y_test, preds)
 
     fig, ax = plt.subplots(figsize=(5, 4))
     ax.imshow(cm, cmap="Blues")
     ax.set_title("Confusion Matrix")
-    ax.set_xlabel("Predicted label")
-    ax.set_ylabel("True label")
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("Actual")
 
-    # tulisan pada cell
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            ax.text(j, i, cm[i, j], va="center", ha="center")
+            ax.text(j, i, cm[i, j], ha="center", va="center")
 
     st.pyplot(fig)
 
     st.subheader("Visualisasi PCA (2D)")
-    show_pca = st.checkbox("Tampilkan PCA Plot")
-
-    if show_pca:
+    if st.checkbox("Tampilkan PCA Plot"):
         X_trans = model.named_steps["prep"].transform(X)
         pca = PCA(n_components=2)
         X_pca = pca.fit_transform(X_trans)
@@ -119,14 +110,13 @@ if uploaded is not None:
         df_pca = pd.DataFrame({
             "PC1": X_pca[:, 0],
             "PC2": X_pca[:, 1],
-            "label": y
+            "Label": y
         })
 
-        st.scatter_chart(df_pca, x="PC1", y="PC2", color="label")
+        st.scatter_chart(df_pca, x="PC1", y="PC2", color="Label")
 
-    st.subheader("Prediksi Data Baru (Input Manual)")
-
-    with st.expander("Masukkan fitur mahasiswa baru"):
+    st.subheader("Prediksi Manual")
+    with st.expander("Input fitur mahasiswa baru"):
         input_data = {}
         for col in numeric_cols:
             input_data[col] = st.number_input(f"{col}", value=float(X[col].median()))
@@ -137,4 +127,4 @@ if uploaded is not None:
         if st.button("Prediksi"):
             df_new = pd.DataFrame([input_data])
             pred_new = model.predict(df_new)[0]
-            st.success(f"Hasil prediksi: {pred_new}")
+            st.success(f"Hasil Prediksi: {pred_new}")
