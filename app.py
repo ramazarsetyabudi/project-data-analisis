@@ -5,84 +5,78 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
-# ==========================
-# LOAD DATASET
-# ==========================
+st.title("Prediksi Dropout / Academic Success")
+
 @st.cache_data
 def load_data():
-    df = pd.read_csv("students_dropout_academic_success.csv")
-    return df
+    return pd.read_csv("students_dropout_academic_success.csv")
 
 df = load_data()
 
-# ==========================
+st.subheader("Preview Dataset")
+st.write(df.head())
+
+# ==========================================
+# AUTOMATIC TARGET DETECTION
+# ==========================================
+possible_targets = ["Target", "target", "status", "Status", "Dropout", "Graduate"]
+
+detected_target = None
+for col in df.columns:
+    if col in possible_targets:
+        detected_target = col
+        break
+
+if detected_target is None:
+    st.error("Kolom target tidak ditemukan. Pastikan nama kolom target benar.")
+    st.stop()
+
+st.success(f"Kolom target terdeteksi: {detected_target}")
+
+# ==========================================
 # PREPROCESSING
-# ==========================
-# Menghapus ID atau kolom yang tidak dipakai jika ada
-if "id" in df.columns:
-    df = df.drop(columns=["id"])
+# ==========================================
+X = df.drop(columns=[detected_target])
+y = df[detected_target]
 
-# Tentukan target (misal: 'Target')
-# Ganti sesuai dataset Anda
-target_column = "Target"
+# Pastikan hanya kolom numerik
+X = X.select_dtypes(include=["int64", "float64"])
 
-X = df.drop(columns=[target_column])
-y = df[target_column]
-
-# Standarisasi
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# ==========================
-# SPLIT DATA
-# ==========================
 X_train, X_test, y_train, y_test = train_test_split(
     X_scaled, y, test_size=0.2, random_state=42
 )
 
-# ==========================
-# TRAIN MODEL
-# ==========================
-model = RandomForestClassifier(
-    n_estimators=200,
-    random_state=42
-)
+# ==========================================
+# MODEL
+# ==========================================
+model = RandomForestClassifier(n_estimators=200, random_state=42)
 model.fit(X_train, y_train)
 
-# Simpan model
-with open("model_rf.pkl", "wb") as f:
+with open("model.pkl", "wb") as f:
     pickle.dump((model, scaler, list(X.columns)), f)
 
-# ==========================
-# STREAMLIT APP
-# ==========================
-st.title("Prediksi Dropout / Academic Success")
-
-st.write("Aplikasi ini melakukan prediksi berdasarkan dataset mahasiswa.")
-
+# ==========================================
+# STREAMLIT INPUT FORM
+# ==========================================
 st.subheader("Input Fitur")
 
-# Buat input otomatis berdasarkan kolom
 user_input = {}
 for col in X.columns:
-    val = st.number_input(f"{col}", value=float(df[col].mean()))
-    user_input[col] = val
+    user_input[col] = st.number_input(col, value=float(df[col].mean()))
 
-# Convert ke dataframe
 input_df = pd.DataFrame([user_input])
 
-# ==========================
-# PREDICT
-# ==========================
+# ==========================================
+# PREDIKSI
+# ==========================================
 if st.button("Prediksi"):
-    # Load model
-    with open("model_rf.pkl", "rb") as f:
-        saved_model, saved_scaler, saved_cols = pickle.load(f)
+    with open("model.pkl", "rb") as f:
+        model, scaler, cols = pickle.load(f)
 
-    # Urutkan kolom
-    input_scaled = saved_scaler.transform(input_df[saved_cols])
+    input_scaled = scaler.transform(input_df[cols])
+    pred = model.predict(input_scaled)[0]
 
-    pred = saved_model.predict(input_scaled)[0]
-
-    st.subheader("Hasil Prediksi")
-    st.success(f"Hasil Model: {pred}")
+    st.success(f"Prediksi Model: {pred}")
