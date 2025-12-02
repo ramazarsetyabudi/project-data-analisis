@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -31,21 +33,22 @@ if uploaded is not None:
     st.dataframe(df_raw.head())
 
     if "target" not in df_raw.columns:
-        st.error("Kolom 'target' tidak ditemukan dalam dataset.")
+        st.error("Dataset harus memiliki kolom bernama 'target'.")
         st.stop()
 
-    st.success("Kolom target ditemukan: 'target'")
+    st.success("Kolom target ditemukan.")
 
     st.sidebar.header("Pengaturan Model")
 
     mode = st.sidebar.radio(
-        "Tipe Klasifikasi",
-        ["3 Kelas (Dropout/Enrolled/Graduate)", "Binary (Dropout/Tidak Dropout)"]
+        "Tipe Klasifikasi:",
+        ["3 Kelas (Dropout / Enrolled / Graduate)",
+         "Binary (Dropout vs Tidak Dropout)"]
     )
 
     df = df_raw.copy()
 
-    if mode == "Binary (Dropout/Tidak Dropout)":
+    if mode == "Binary (Dropout vs Tidak Dropout)":
         df["target"] = df["target"].apply(lambda x: 1 if x == 0 else 0)
 
     X = df.drop(columns=["target"])
@@ -55,9 +58,10 @@ if uploaded is not None:
     cat_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
     st.sidebar.subheader("Hyperparameter KNN")
+
     k_val = st.sidebar.slider("n_neighbors (k)", 1, 21, 5)
     weight_val = st.sidebar.selectbox("weights", ["uniform", "distance"])
-    p_val = st.sidebar.selectbox("P metric", [1, 2])
+    p_val = st.sidebar.selectbox("Metric P", [1, 2])
 
     numeric_transformer = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="median")),
@@ -94,7 +98,6 @@ if uploaded is not None:
         random_state=42
     )
 
-    # Train model
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
@@ -104,36 +107,39 @@ if uploaded is not None:
     f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
     cm = confusion_matrix(y_test, y_pred)
 
-    # Tabs
-    tab1, tab2, tab3 = st.tabs(["📊 EDA", "🧠 Evaluasi Model", "🎯 Prediksi Manual"])
+
+    tab1, tab2, tab3 = st.tabs(["EDA", "Evaluasi Model", "Prediksi Manual"])
+
 
     with tab1:
-        st.subheader("Exploratory Data Analysis (EDA)")
+        st.subheader("Exploratory Data Analysis")
 
         colA, colB = st.columns(2)
 
         with colA:
-            st.markdown("**Informasi Dataset**")
+            st.write("**Dimensi Dataset:**")
             st.write(df.shape)
-            st.markdown("**Missing Values per Kolom**")
+
+            st.write("**Missing Values:**")
             st.dataframe(df.isnull().sum().to_frame("missing"))
 
         with colB:
-            st.markdown("**Distribusi Target**")
+            st.write("**Distribusi Target:**")
             st.bar_chart(df["target"].value_counts().sort_index())
 
+
     with tab2:
-        st.subheader("Evaluasi Model")
+        st.subheader("Evaluasi Model KNN")
 
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Accuracy", f"{acc:.4f}")
         col2.metric("Precision", f"{prec:.4f}")
         col3.metric("Recall", f"{rec:.4f}")
-        col4.metric("F1-score", f"{f1:.4f}")
+        col4.metric("F1", f"{f1:.4f}")
 
         st.markdown("---")
-        st.markdown("### Confusion Matrix")
 
+        st.write("### Confusion Matrix")
         fig, ax = plt.subplots(figsize=(5, 4))
         ax.imshow(cm, cmap="Blues")
         for i in range(len(cm)):
@@ -142,25 +148,26 @@ if uploaded is not None:
         st.pyplot(fig)
 
         st.markdown("---")
-        st.markdown("### Classification Report")
+
+        st.write("### Classification Report")
         st.text(classification_report(y_test, y_pred))
 
+
     with tab3:
-        st.subheader("Prediksi Mahasiswa Baru")
+        st.subheader("Prediksi untuk Mahasiswa Baru")
 
         with st.expander("Isi Data Mahasiswa"):
-
             input_data = {}
 
-            st.markdown("### Fitur Numerik")
+            st.write("### Fitur Numerik")
             for col in numeric_cols:
                 input_data[col] = st.number_input(
                     col, value=float(X[col].median())
                 )
 
-            st.markdown("### Fitur Kategorikal")
+            st.write("### Fitur Kategorikal")
             for col in cat_cols:
-                input_data[col] = st.text_input(col, value="MISSING")
+                input_data[col] = st.text_input(col, "MISSING")
 
             if st.button("Prediksi"):
                 df_new = pd.DataFrame([input_data])
@@ -176,4 +183,4 @@ if uploaded is not None:
                 st.success(f"Hasil Prediksi: {pred_new}")
 
 else:
-    st.info("D:\SEMESTER 3 LAPTOP\(IS388-AL) Data Analysis - LAB\W - Copy (13)\Unguided\archive\students_dropout_academic_success.csv.")
+    st.info("students_dropout_academic_success.csv")
