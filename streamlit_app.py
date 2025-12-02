@@ -9,9 +9,9 @@ from sklearn.decomposition import PCA
 
 st.title("Prediksi Risiko Dropout Mahasiswa (KNN)")
 
-uploaded = st.file_uploader("Upload dataset mahasiswa (CSV)", type=["csv"])
+uploaded = st.file_uploader(""D:\SEMESTER 3 LAPTOP\(IS388-AL) Data Analysis - LAB\W - Copy (13)\Unguided\archive\students_dropout_academic_success.csv"", type=["csv"])
 
-TARGET_COL = "students_dropout_academic_success"
+TARGET_COL = "Target"
 
 if uploaded is not None:
     df = pd.read_csv(uploaded)
@@ -20,6 +20,8 @@ if uploaded is not None:
     if TARGET_COL not in df.columns:
         st.error(f"Target column '{TARGET_COL}' tidak ditemukan dalam file.")
     else:
+        df["Target"] = df["Target"].apply(lambda x: 1 if x == 0 else 0)
+
         X = df.drop(columns=[TARGET_COL])
         y = df[TARGET_COL]
 
@@ -59,11 +61,3 @@ if uploaded is not None:
 
         st.write("Prediksi vs Aktual:")
         st.write(pd.DataFrame({"Actual": y_test.values, "Predicted": preds}).head())
-
-        if st.checkbox("Tampilkan PCA Visualization"):
-            X_trans = model.named_steps["prep"].transform(X)
-            pca = PCA(n_components=2)
-            X_pca = pca.fit_transform(X_trans)
-            st.scatter_chart(
-                pd.DataFrame({"PC1": X_pca[:, 0], "PC2": X_pca[:, 1], "label": y})
-            )
