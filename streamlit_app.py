@@ -17,15 +17,17 @@ from sklearn.metrics import (
 )
 from sklearn.decomposition import PCA
 
-st.set_page_config(
-    page_title="Prediksi Risiko Dropout Mahasiswa",
-    layout="wide"
-)
-
+# -------------------------------------------------------------------
+# CONFIG
+# -------------------------------------------------------------------
+st.set_page_config(page_title="Prediksi Risiko Dropout", layout="wide")
 st.title("Prediksi Risiko Dropout Mahasiswa (KNN)")
 
 uploaded = st.file_uploader("Upload dataset mahasiswa (CSV)", type=["csv"])
 
+# -------------------------------------------------------------------
+# START APP
+# -------------------------------------------------------------------
 if uploaded is not None:
 
     df_raw = pd.read_csv(uploaded)
@@ -33,20 +35,18 @@ if uploaded is not None:
     st.dataframe(df_raw.head())
 
     if "target" not in df_raw.columns:
-        st.error("Dataset harus memiliki kolom bernama 'target'.")
+        st.error("Dataset harus memiliki kolom 'target'.")
         st.stop()
 
-    st.success("Kolom target ditemukan.")
+    df = df_raw.copy()
 
+    # Sidebar
     st.sidebar.header("Pengaturan Model")
 
     mode = st.sidebar.radio(
-        "Tipe Klasifikasi:",
-        ["3 Kelas (Dropout / Enrolled / Graduate)",
-         "Binary (Dropout vs Tidak Dropout)"]
+        "Mode Klasifikasi:",
+        ["3 Kelas (Dropout/Enrolled/Graduate)", "Binary (Dropout vs Tidak Dropout)"]
     )
-
-    df = df_raw.copy()
 
     if mode == "Binary (Dropout vs Tidak Dropout)":
         df["target"] = df["target"].apply(lambda x: 1 if x == 0 else 0)
@@ -57,12 +57,17 @@ if uploaded is not None:
     numeric_cols = X.select_dtypes(include=["number"]).columns.tolist()
     cat_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
+    # -------------------------------------------------------------------
+    # Hyperparameters
+    # -------------------------------------------------------------------
     st.sidebar.subheader("Hyperparameter KNN")
-
-    k_val = st.sidebar.slider("n_neighbors (k)", 1, 21, 5)
+    k_val = st.sidebar.slider("n_neighbors", 1, 21, 5)
     weight_val = st.sidebar.selectbox("weights", ["uniform", "distance"])
     p_val = st.sidebar.selectbox("Metric P", [1, 2])
 
+    # -------------------------------------------------------------------
+    # Pipelines
+    # -------------------------------------------------------------------
     numeric_transformer = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="median")),
         ("scaler", StandardScaler())
@@ -70,7 +75,7 @@ if uploaded is not None:
 
     categorical_transformer = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="constant", fill_value="MISSING")),
-        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse=False))
+        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
     ])
 
     preprocessor = ColumnTransformer(
@@ -89,13 +94,10 @@ if uploaded is not None:
         ))
     ])
 
+    # Split data
     strat = y if y.value_counts().min() >= 2 else None
-
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=0.25,
-        stratify=strat,
-        random_state=42
+        X, y, test_size=0.25, stratify=strat, random_state=42
     )
 
     model.fit(X_train, y_train)
@@ -107,39 +109,37 @@ if uploaded is not None:
     f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
     cm = confusion_matrix(y_test, y_pred)
 
+    tab1, tab2, tab3 = st.tabs(["📊 EDA", "🧠 Evaluasi Model", "🎯 Prediksi Manual"])
 
-    tab1, tab2, tab3 = st.tabs(["EDA", "Evaluasi Model", "Prediksi Manual"])
 
-
+    # ================= TAB 1 =================
     with tab1:
         st.subheader("Exploratory Data Analysis")
 
         colA, colB = st.columns(2)
-
         with colA:
-            st.write("**Dimensi Dataset:**")
-            st.write(df.shape)
-
-            st.write("**Missing Values:**")
+            st.write("Dimensi dataset:", df.shape)
+            st.write("Missing values:")
             st.dataframe(df.isnull().sum().to_frame("missing"))
 
         with colB:
-            st.write("**Distribusi Target:**")
+            st.write("Distribusi target:")
             st.bar_chart(df["target"].value_counts().sort_index())
 
 
+    # ================= TAB 2 =================
     with tab2:
-        st.subheader("Evaluasi Model KNN")
+        st.subheader("Evaluasi Model")
 
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Accuracy", f"{acc:.4f}")
+        col1.metric("Akurasi", f"{acc:.4f}")
         col2.metric("Precision", f"{prec:.4f}")
         col3.metric("Recall", f"{rec:.4f}")
-        col4.metric("F1", f"{f1:.4f}")
+        col4.metric("F1 Score", f"{f1:.4f}")
 
-        st.markdown("---")
-
+        st.write("---")
         st.write("### Confusion Matrix")
+
         fig, ax = plt.subplots(figsize=(5, 4))
         ax.imshow(cm, cmap="Blues")
         for i in range(len(cm)):
@@ -147,23 +147,21 @@ if uploaded is not None:
                 ax.text(j, i, cm[i][j], ha="center", va="center")
         st.pyplot(fig)
 
-        st.markdown("---")
-
+        st.write("---")
         st.write("### Classification Report")
         st.text(classification_report(y_test, y_pred))
 
 
+    # ================= TAB 3 =================
     with tab3:
-        st.subheader("Prediksi untuk Mahasiswa Baru")
+        st.subheader("Prediksi Manual")
 
-        with st.expander("Isi Data Mahasiswa"):
+        with st.expander("Isi fitur mahasiswa baru"):
             input_data = {}
 
             st.write("### Fitur Numerik")
             for col in numeric_cols:
-                input_data[col] = st.number_input(
-                    col, value=float(X[col].median())
-                )
+                input_data[col] = st.number_input(col, value=float(X[col].median()))
 
             st.write("### Fitur Kategorikal")
             for col in cat_cols:
@@ -172,6 +170,7 @@ if uploaded is not None:
             if st.button("Prediksi"):
                 df_new = pd.DataFrame([input_data])
 
+                # pastikan semua kolom ada
                 for col in X_train.columns:
                     if col not in df_new.columns:
                         df_new[col] = np.nan
@@ -179,8 +178,7 @@ if uploaded is not None:
                 df_new = df_new[X_train.columns]
 
                 pred_new = model.predict(df_new)[0]
-
-                st.success(f"Hasil Prediksi: {pred_new}")
+                st.success(f"Hasil prediksi: {pred_new}")
 
 else:
-    st.info("students_dropout_academic_success.csv")
+    st.info("Silakan upload file CSV untuk memulai.")
