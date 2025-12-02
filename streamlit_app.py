@@ -9,9 +9,9 @@ from sklearn.decomposition import PCA
 
 st.title("Prediksi Risiko Dropout Mahasiswa (KNN)")
 
-uploaded = st.file_uploader("D:\SEMESTER 3 LAPTOP\(IS388-AL) Data Analysis - LAB\W - Copy (13)\Unguided\archive\students_dropout_academic_success.csv", type=["csv"])
+uploaded = st.file_uploader("Upload dataset mahasiswa (CSV)", type=["csv"])
 
-TARGET_COL = "Target"
+TARGET_COL = "Target"   # pastikan dataset Anda memiliki kolom ini
 
 if uploaded is not None:
     df = pd.read_csv(uploaded)
@@ -20,6 +20,7 @@ if uploaded is not None:
     if TARGET_COL not in df.columns:
         st.error(f"Target column '{TARGET_COL}' tidak ditemukan dalam file.")
     else:
+        # OPTIONAL: convert 3-class target → binary
         df["Target"] = df["Target"].apply(lambda x: 1 if x == 0 else 0)
 
         X = df.drop(columns=[TARGET_COL])
