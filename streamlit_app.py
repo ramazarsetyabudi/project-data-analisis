@@ -137,60 +137,54 @@ if uploaded is not None:
         st.write("Classification report:")
         st.text(classification_report(y_test, y_pred))
 
-    # TAB 3: Prediksi Manual (PERBAIKAN)
+        # ================= TAB 3: Prediksi Manual =================
     with tab3:
-        st.subheader("Prediksi Mahasiswa Baru (Manual) — versi aman")
+        st.subheader("Prediksi Mahasiswa Baru")
+
+        st.info("Kolom numerik hanya boleh diisi ANGKA. Kolom kategorikal hanya boleh TEKS.")
 
         with st.expander("Isi fitur mahasiswa baru"):
             input_data = {}
 
-            st.write("### Fitur numerik (masukkan angka)")
+            st.write("### Fitur Numerik")
             for col in numeric_cols:
-                default_val = float(X[col].median()) if col in X.columns else 0.0
-                input_data[col] = st.number_input(col, value=default_val, format="%.6f")
+                default_val = float(X[col].median())
+                input_data[col] = st.number_input(col, value=default_val)
 
-            st.write("### Fitur kategorikal (masukkan teks)")
+            st.write("### Fitur Kategorikal")
             for col in cat_cols:
                 input_data[col] = st.text_input(col, value="MISSING")
 
             if st.button("Prediksi"):
-                # 1) bangun DataFrame input
+                # bangun dataframe input
                 df_new = pd.DataFrame([input_data])
 
-                # 2) pastikan semua kolom training ada pada df_new (isi NaN jika tidak ada)
+                # pastikan kolom lengkap
                 for col in X_train.columns:
                     if col not in df_new.columns:
                         df_new[col] = np.nan
 
-                # 3) susun kolom sesuai urutan training
                 df_new = df_new[X_train.columns]
 
-                # 4) konversi tipe: numeric -> numeric, categorical -> str
+                # pastikan kolom numerik -> numeric
                 for col in numeric_cols:
-                    # jika ada nilai non-numeric akan menjadi NaN dan diimpute oleh pipeline
                     df_new[col] = pd.to_numeric(df_new[col], errors="coerce")
 
+                # pastikan kolom kategorikal -> string
                 for col in cat_cols:
-                    # pastikan berupa string (onehot membutuhkan strings)
-                    df_new[col] = df_new[col].astype(str).fillna("MISSING")
+                    df_new[col] = df_new[col].astype(str)
 
-                # 5) Debug check: tampilkan preview small
-                st.write("Preview input (setelah align dengan training):")
-                st.dataframe(df_new.head())
+                st.write("Preview input:")
+                st.dataframe(df_new)
 
-                # 6) Transform & predict secara eksplisit
                 try:
-                    X_new_trans = model.named_steps["prep"].transform(df_new)  # shape (1, n_features_after_preproc)
-                    # cek dimensi
-                    # X_train_trans = model.named_steps["prep"].transform(X_train.iloc[:1])
-                    # if X_new_trans.shape[1] != X_train_trans.shape[1]:
-                    #     st.warning("Dimensi fitur setelah preprocessing tidak sesuai dengan training.")
+                    X_new_trans = model.named_steps["prep"].transform(df_new)
                     pred_new = model.named_steps["knn"].predict(X_new_trans)[0]
                     st.success(f"Hasil prediksi: {pred_new}")
+
                 except Exception as e:
-                    # tampilkan pesan error ringkas dan saran
-                    st.error("Terjadi error saat memproses input baru. Detail error (ringkasan):")
+                    st.error("Error memproses input:")
                     st.code(str(e))
-                    st.info("Pastikan Anda mengisi semua fitur sesuai tipe (angka untuk numerik, teks untuk kategori).")
+                    st.info("Periksa apakah Anda memasukkan teks ke kolom numerik.")
 else:
     st.info("Silakan upload file CSV yang mengandung kolom 'target' untuk memulai.")
