@@ -1,83 +1,47 @@
 import streamlit as st
 import pandas as pd
-import pickle
-from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.preprocessing import StandardScaler
+from prediction import predict_with_proba, get_classes
 
-st.title("Aplikasi Prediksi Dropout / Academic Success Menggunakan KNN")
+st.set_page_config(page_title="Iris Classifier", layout="centered")
 
-@st.cache_data
-def load_data():
-    return pd.read_csv("students_dropout_academic_success.csv")
+st.title("Iris Flower Classifier")
+st.write("Pilih fitur sepal/petal lalu klik **Predict**. Aplikasi akan menampilkan prediksi dan diagram probabilitas.")
 
-df = load_data()
+st.header("Plant Features")
+col1, col2 = st.columns(2)
 
-st.subheader("Preview Dataset")
-st.write(df.head())
+with col1:
+    sepal_l = st.slider("Sepal length (cm)", 1.0, 8.0, 5.0, 0.1)
+    sepal_w = st.slider("Sepal width (cm)", 1.0, 5.0, 3.0, 0.1)
 
+with col2:
+    petal_l = st.slider("Petal length (cm)", 0.0, 7.0, 4.0, 0.1)
+    petal_w = st.slider("Petal width (cm)", 0.0, 2.5, 1.0, 0.1)
 
-possible_targets = [
-    "Target", "target", "Status", "status",
-    "Dropout", "dropout", "Graduate", "graduate", "Outcome"
-]
+if st.button("Predict"):
+ 
+    pred_label, probs = predict_with_proba([sepal_l, sepal_w, petal_l, petal_w])
 
-detected_target = None
-for col in df.columns:
-    if col in possible_targets:
-        detected_target = col
-        break
-
-if detected_target is None:
-    st.error("Kolom target tidak ditemukan. Pastikan nama kolom target benar.")
-    st.stop()
-
-st.success(f"Kolom target terdeteksi: {detected_target}")
-
-
-X = df.drop(columns=[detected_target])
-y = df[detected_target]
-
-
-X = X.select_dtypes(include=["int64", "float64"])
-
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.2, random_state=42
-)
-
-
-knn = KNeighborsClassifier(
-    n_neighbors=5,
-    weights='distance',
-    metric='minkowski'
-)
-
-knn.fit(X_train, y_train)
-
-
-with open("model_knn.pkl", "wb") as f:
-    pickle.dump((knn, scaler, list(X.columns)), f)
-
-st.subheader("Input Fitur untuk Prediksi")
-
-user_input = {}
-for col in X.columns:
-    user_input[col] = st.number_input(col, value=float(df[col].mean()))
-
-input_df = pd.DataFrame([user_input])
-
-
-if st.button("Prediksi"):
-    with open("model_knn.pkl", "rb") as f:
-        knn_model, knn_scaler, cols = pickle.load(f)
-
-    input_scaled = knn_scaler.transform(input_df[cols])
-    pred = knn_model.predict(input_scaled)[0]
 
     st.subheader("Hasil Prediksi")
-    st.success(f"Hasil Model KNN: {pred}")
+    st.success(f"Jenis bunga: **{pred_label}**")
+
+
+    st.write("**Input (cm):**", {
+        "sepal_length": sepal_l,
+        "sepal_width": sepal_w,
+        "petal_length": petal_l,
+        "petal_width": petal_w
+    })
+
+  
+    classes = get_classes()
+    if probs is not None and len(classes) == len(probs):
+        df = pd.DataFrame({"Probability": probs}, index=classes)
+        df = df.sort_values("Probability", ascending=True)  
+        st.subheader("Probabilitas per Kelas")
+        st.bar_chart(df)   
+       
+        st.table(df.T)
+    else:
+        st.info("Model tidak menyediakan probabilitas. Hanya menampilkan label prediksi.")
