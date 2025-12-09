@@ -28,24 +28,24 @@ except Exception:
     
 st.sidebar.header("Masukkan data")
 inputs = {}
+
 for feat in selected_features:
     if feat in ["Debtor", "Tuition fees up to date", "Scholarship holder"]:
-        # categorical binary 0 atau 1
-        val = st.sidebar.selectbox(fmt := feat, options=[0, 1], index=0)
+        val = st.sidebar.selectbox(feat, [0, 1])
         inputs[feat] = int(val)
+
     else:
-        # numeric, set range dari dataset jika tersedia
         if df is not None and feat in df.columns:
             minv = float(df[feat].min())
             maxv = float(df[feat].max())
             meanv = float(df[feat].median())
-            step = (maxv - minv) / 100 if maxv > minv else 1.0
-            val = st.sidebar.number_input(feat, value=meanv, min_value=minv, max_value=maxv, step=step)
+            val = st.sidebar.number_input(feat, value=meanv, min_value=minv, max_value=maxv)
             inputs[feat] = float(val)
         else:
-            # default range
             val = st.sidebar.number_input(feat, value=0.0)
             inputs[feat] = float(val)
+
+
 
 # Predict button
 if st.sidebar.button("Prediksi"):
