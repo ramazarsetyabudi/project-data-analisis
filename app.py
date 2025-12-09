@@ -62,5 +62,4 @@ if st.sidebar.button("Prediksi"):
     })
     st.table(prob_df)
 
-    # Penjelasan s
-    st.write("Catatan: Gunakan data kualitatif dan nilai akademik yang valid. Model ini berfungsi sebagai panduan.")
+
