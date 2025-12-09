@@ -10,9 +10,9 @@ st.set_page_config(page_title="Dropout Predictor", layout="centered")
 st.title("Prediksi Risiko Dropout, Logistic Regression")
 
 # Load model dan metadata
-model = joblib.load("model/model.pkl")
-scaler = joblib.load("model/scaler.pkl")
-with open("model/info.json", "r") as f:
+model = joblib.load("model.pkl")
+scaler = joblib.load("scaler.pkl")
+with open("info.json", "r") as f:
     info = json.load(f)
 
 selected_features = info["selected_features"]
