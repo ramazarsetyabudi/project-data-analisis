@@ -9,7 +9,7 @@ st.set_page_config(page_title="Dropout Predictor", layout="centered")
 
 st.title("Prediksi Risiko Dropout, Logistic Regression")
 
-# Load model dan metadata
+# Load model 
 model = joblib.load("model.pkl")
 scaler = joblib.load("scaler.pkl")
 with open("info.json", "r") as f:
@@ -19,15 +19,13 @@ selected_features = info["selected_features"]
 target_map = info["target_map"]
 inv_target_map = {v: k for k, v in target_map.items()}
 
-st.write("Akurasi model (test):", round(info.get("accuracy", 0), 4))
+st.write("Akurasi model:", round(info.get("accuracy", 0), 4))
 
-# Jika dataset tersedia, gunakan untuk ambang input
 try:
     df = pd.read_csv("students_dropout_academic_success.csv")
 except Exception:
     df = None
-
-# Input user
+    
 st.sidebar.header("Masukkan data")
 inputs = {}
 for feat in selected_features:
@@ -64,5 +62,5 @@ if st.sidebar.button("Prediksi"):
     })
     st.table(prob_df)
 
-    # Penjelasan singkat
+    # Penjelasan s
     st.write("Catatan: Gunakan data kualitatif dan nilai akademik yang valid. Model ini berfungsi sebagai panduan.")
